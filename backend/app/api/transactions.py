@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from sqlalchemy import extract, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -71,11 +71,18 @@ def _base_stmt(user_id: str):
 
 @router.get("", response_model=list[TransactionRead])
 async def list_transactions(
+    month: int | None = Query(None, ge=1, le=12),
+    year: int | None = Query(None, ge=2000, le=2100),
     auth: dict = Depends(verify_jwt),
     db: AsyncSession = Depends(get_db),
 ):
     uid = auth["user_id"]
-    stmt = _base_stmt(uid).order_by(Transaction.transaction_date.desc())
+    stmt = _base_stmt(uid)
+    if month:
+        stmt = stmt.where(extract("month", Transaction.transaction_date) == month)
+    if year:
+        stmt = stmt.where(extract("year", Transaction.transaction_date) == year)
+    stmt = stmt.order_by(Transaction.transaction_date.desc())
     result = await db.execute(stmt)
     return list(result.unique().scalars().all())
 

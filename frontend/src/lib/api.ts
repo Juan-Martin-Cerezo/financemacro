@@ -117,7 +117,16 @@ export interface AccountDTO {
 
 export const api = {
   transactions: {
-    list: () => apiFetch<TransactionDTO[]>("/api/v1/transactions"),
+    list: (params?: { month?: number; year?: number }) => {
+      const qs = params
+        ? "?" + new URLSearchParams(
+            Object.fromEntries(
+              Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+            )
+          ).toString()
+        : "";
+      return apiFetch<TransactionDTO[]>(`/api/v1/transactions${qs}`);
+    },
     create: (data: { amount: number; description?: string; transaction_date?: string }) =>
       apiFetch<TransactionDTO>("/api/v1/transactions", { method: "POST", body: JSON.stringify(data) }),
     netBalance: () =>

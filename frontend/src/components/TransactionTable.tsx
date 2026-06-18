@@ -16,13 +16,13 @@ function CategoryBadge({ cat }: { cat: TransactionDTO["category"] }) {
   );
 }
 
-export default function TransactionTable() {
+export default function TransactionTable({ month, year }: { month?: number; year?: number }) {
   const [txs, setTxs] = useState<TransactionDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    try { setTxs(await api.transactions.list()); } catch { /* silent */ }
-  }, []);
+    try { setTxs(await api.transactions.list({ month, year })); } catch { /* silent */ }
+  }, [month, year]);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 

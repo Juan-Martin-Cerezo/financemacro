@@ -4,27 +4,41 @@ import { useCallback, useEffect, useState } from "react";
 import TransactionTable from "@/components/TransactionTable";
 import EnvelopeGrid from "@/components/EnvelopeGrid";
 import MarketTicker from "@/components/MarketTicker";
+import CashFlowChart from "@/components/CashFlowChart";
 import NewTransactionModal from "@/components/NewTransactionModal";
-import { api, type EnvelopeDTO } from "@/lib/api";
-import { Plus, Wallet, Banknote, AlertTriangle } from "lucide-react";
+import { api, type EnvelopeDTO, type TransactionDTO } from "@/lib/api";
+import { Plus, Wallet, Banknote, AlertTriangle, ChevronDown } from "lucide-react";
+
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+const currentYear = new Date().getFullYear();
+const currentMonth = new Date().getMonth() + 1;
 
 export default function Dashboard() {
   const [showNewTx, setShowNewTx] = useState(false);
   const [netBalance, setNetBalance] = useState<number | null>(null);
   const [envelopes, setEnvelopes] = useState<EnvelopeDTO[]>([]);
+  const [month, setMonth] = useState<number>(currentMonth);
+  const [year, setYear] = useState<number>(currentYear);
+  const [txs, setTxs] = useState<TransactionDTO[]>([]);
 
-  const loadFunds = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const [bal, envs] = await Promise.all([
+      const [bal, envs, txList] = await Promise.all([
         api.transactions.netBalance(),
         api.envelopes.list(),
+        api.transactions.list({ month, year }),
       ]);
       setNetBalance(parseFloat(bal.net_balance));
       setEnvelopes(envs);
+      setTxs(txList);
     } catch { /* silent */ }
-  }, []);
+  }, [month, year]);
 
-  useEffect(() => { loadFunds(); }, [loadFunds]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const allocatedTotal = envelopes.reduce((s, e) => s + parseFloat(e.current_balance), 0);
   const unallocated = netBalance !== null ? netBalance - allocatedTotal : null;
@@ -34,6 +48,8 @@ export default function Dashboard() {
     0,
   );
   const deficit = netBalance !== null && targetTotal > 0 && netBalance < targetTotal;
+
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
@@ -53,9 +69,38 @@ export default function Dashboard() {
 
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-400">Share a receipt to log it automatically.</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-400">Share a receipt to log it automatically.</p>
+          </div>
+          {/* Month/Year selector */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <select
+                value={month}
+                onChange={(e) => setMonth(Number(e.target.value))}
+                className="appearance-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 pr-8 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {MONTHS.map((name, i) => (
+                  <option key={i + 1} value={i + 1}>{name}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+            <div className="relative">
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="appearance-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 pr-8 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
         </div>
         <button
           onClick={() => setShowNewTx(true)}
@@ -101,10 +146,15 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Cash Flow Chart */}
+      <div className="mb-6">
+        <CashFlowChart transactions={txs} />
+      </div>
+
       {/* Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <TransactionTable />
+          <TransactionTable month={month} year={year} />
           <EnvelopeGrid />
         </div>
         <div className="space-y-6">
@@ -119,7 +169,7 @@ export default function Dashboard() {
       {showNewTx && (
         <NewTransactionModal
           onClose={() => setShowNewTx(false)}
-          onDone={() => { setShowNewTx(false); loadFunds(); }}
+          onDone={() => { setShowNewTx(false); loadData(); }}
         />
       )}
     </div>

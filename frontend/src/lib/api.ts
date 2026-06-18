@@ -111,6 +111,8 @@ export interface RuleDTO {
 export const api = {
   transactions: {
     list: () => apiFetch<TransactionDTO[]>("/api/v1/transactions"),
+    create: (data: { amount: number; description?: string; transaction_date?: string }) =>
+      apiFetch<TransactionDTO>("/api/v1/transactions", { method: "POST", body: JSON.stringify(data) }),
     netBalance: () =>
       apiFetch<{ net_balance: string; transaction_count: number }>("/api/v1/transactions/netting"),
   },

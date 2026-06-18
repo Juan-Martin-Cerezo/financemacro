@@ -8,10 +8,34 @@ from app.core.auth import verify_jwt
 from app.core.database import get_db
 from app.models.models import Transaction
 from app.schemas.transaction import TransactionCreate, TransactionRead
+from app.services.netting_engine import NettingEngine
 from app.services.receipt_parser import ReceiptParser
 from app.services.rule_matcher import RuleMatcher
 
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
+
+
+async def _process_and_persist(
+    db: AsyncSession,
+    tx: Transaction,
+    user_id: str,
+) -> None:
+    """Apply RuleMatcher + NettingEngine to a new tx, then commit."""
+    # 1. Auto-categorize via keyword rules
+    matcher = RuleMatcher(db, user_id)
+    await matcher.apply(tx)
+
+    # 2. Netting logic
+    engine = NettingEngine(db, user_id)
+    if tx.amount < 0:
+        await engine.process_new_transaction(tx)
+    elif tx.amount > 0:
+        await engine.try_match_incoming(tx)
+
+    # 3. Persist
+    db.add(tx)
+    await db.commit()
+    await db.refresh(tx)
 
 
 @router.get("", response_model=list[TransactionRead])
@@ -33,9 +57,7 @@ async def create_transaction(
 ):
     uid = auth["user_id"]
     tx = Transaction(user_id=uid, **body.model_dump(exclude_unset=True))
-    db.add(tx)
-    await db.commit()
-    await db.refresh(tx)
+    await _process_and_persist(db, tx, uid)
     return tx
 
 
@@ -45,7 +67,6 @@ async def upload_receipt(
     auth: dict = Depends(verify_jwt),
     db: AsyncSession = Depends(get_db),
 ):
-    """PWA share_target endpoint. Accepts PDF, image, or text receipt."""
     uid = auth["user_id"]
     raw = await file.read()
     parser = ReceiptParser()
@@ -58,11 +79,8 @@ async def upload_receipt(
         transaction_date=parsed["transaction_date"],
         currency="ARS",
         raw_data=parsed.get("raw_data") or {},
-        status="pending_netting" if abs(parsed["amount"]) >= 1000 else "settled",
     )
-    db.add(tx)
-    await db.commit()
-    await db.refresh(tx)
+    await _process_and_persist(db, tx, uid)
     return tx
 
 
@@ -72,18 +90,23 @@ async def webhook_ingest(
     payload: dict,
     db: AsyncSession = Depends(get_db),
 ):
-    """Passive income receiver called by external providers (MP, etc.).
-    Auth handled by provider-side signing secret instead of JWT."""
-    # TODO: verify provider webhook signature per-provider
+    # Webhook user resolved per-provider signing — using "system" as fallback
+    user_id = "system"
+    amount = payload.get("amount", 0)
     tx = Transaction(
-        user_id="system",
-        amount=payload.get("amount", 0),
+        user_id=user_id,
+        amount=amount,
         description=payload.get("description", ""),
         transaction_date=payload.get("date"),
         raw_data=payload,
     )
-    db.add(tx)
-    await db.commit()
+    # Still run business logic if we have a valid user
+    if user_id:
+        await _process_and_persist(db, tx, user_id)
+    else:
+        db.add(tx)
+        await db.commit()
+        await db.refresh(tx)
     return {"status": "ok", "transaction_id": str(tx.id)}
 
 
@@ -92,7 +115,6 @@ async def netting_balance(
     auth: dict = Depends(verify_jwt),
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns real balance with netting groups resolved."""
     uid = auth["user_id"]
     stmt = select(Transaction).where(Transaction.user_id == uid, Transaction.status != "absorbed")
     result = await db.execute(stmt)

@@ -11,34 +11,26 @@ export class ApiError extends Error {
   }
 }
 
-/** Fetch wrapper — injects Supabase JWT in Authorization header. */
 export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(options.headers);
-
   const supabase = getSupabase();
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   headers.set("Content-Type", "application/json");
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-
   if (!res.ok) {
     const body = await res.text();
     throw new ApiError(body || res.statusText, res.status);
   }
-
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
-/** Upload a file (for PWA share_target). Sends multipart/form-data. */
 export async function uploadReceipt(file: File): Promise<unknown> {
   const supabase = getSupabase();
   const { data } = await supabase.auth.getSession();
@@ -48,13 +40,9 @@ export async function uploadReceipt(file: File): Promise<unknown> {
 
   const fd = new FormData();
   fd.append("file", file);
-
   const res = await fetch(`${API_BASE}/api/v1/transactions/upload-receipt`, {
-    method: "POST",
-    headers,
-    body: fd,
+    method: "POST", headers, body: fd,
   });
-
   if (!res.ok) {
     const body = await res.text();
     throw new ApiError(body || res.statusText, res.status);
@@ -64,12 +52,20 @@ export async function uploadReceipt(file: File): Promise<unknown> {
 
 // ── DTOs ───────────────────────────────────────────────────────────────────
 
+export interface CategoryBrief {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+}
+
 export interface TransactionDTO {
   id: string;
   user_id: string;
   account_id: string | null;
   event_group_id: string | null;
   category_id: string | null;
+  category: CategoryBrief | null;
   amount: number;
   currency: string;
   description: string;
@@ -106,6 +102,17 @@ export interface RuleDTO {
   created_at: string;
 }
 
+export interface AccountDTO {
+  id: string;
+  user_id: string;
+  provider: string;
+  type: string;
+  name: string;
+  credentials: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Typed endpoint helpers ─────────────────────────────────────────────────
 
 export const api = {
@@ -136,8 +143,14 @@ export const api = {
     list: () => apiFetch<EnvelopeDTO[]>("/api/v1/envelopes"),
     allocate: (id: string, amount: number) =>
       apiFetch<EnvelopeDTO>(`/api/v1/envelopes/${id}/allocate`, {
-        method: "POST",
-        body: JSON.stringify({ amount }),
+        method: "POST", body: JSON.stringify({ amount }),
       }),
+  },
+  accounts: {
+    list: () => apiFetch<AccountDTO[]>("/api/v1/accounts"),
+    create: (data: { provider: string; type: string; name?: string }) =>
+      apiFetch<AccountDTO>("/api/v1/accounts", { method: "POST", body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      apiFetch<void>(`/api/v1/accounts/${id}`, { method: "DELETE" }),
   },
 };

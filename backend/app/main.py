@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import categories, envelopes, hermes, market, rules, transactions
+from app.api import accounts, categories, envelopes, hermes, market, rules, transactions
 from app.core.database import async_session_factory, engine, Base
 from app.services.netting_engine import NettingEngine
 
@@ -59,6 +59,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FinanceMacro API", version="0.1.0", lifespan=lifespan)
 
+app.include_router(accounts.router)
 app.include_router(categories.router)
 app.include_router(transactions.router)
 app.include_router(rules.router)

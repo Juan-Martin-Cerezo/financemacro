@@ -13,6 +13,15 @@ class TransactionCreate(BaseModel):
     transaction_date: datetime = None  # type: ignore[assignment]
 
 
+class CategoryBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    color: str
+    icon: str
+
+
 class TransactionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,6 +30,7 @@ class TransactionRead(BaseModel):
     account_id: UUID | None
     event_group_id: UUID | None
     category_id: UUID | None
+    category: CategoryBrief | None = None
     amount: Decimal
     currency: str
     description: str

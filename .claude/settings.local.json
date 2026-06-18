@@ -6,7 +6,9 @@
       "Bash(git commit -m 'feat: initial scaffolding — all backend services + frontend PWA dashboard *)",
       "Bash(gh repo *)",
       "Bash(git commit -m 'feat: integrate business logic into tx pipeline + bg netting worker + new-tx modal + unallocated funds card *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(git rm *)"
     ]
   }
 }

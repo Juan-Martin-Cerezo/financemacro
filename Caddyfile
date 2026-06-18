@@ -1,0 +1,27 @@
+# Caddy reverse proxy for FinanceMacro
+# Oracle Cloud deployment — auto HTTPS via Let's Encrypt.
+# Replace example.com with your actual domain.
+
+example.com {
+    # FastAPI backend
+    handle_path /api/* {
+        reverse_proxy backend:8000
+    }
+
+    handle_path /docs /openapi.json /redoc {
+        reverse_proxy backend:8000
+    }
+
+    handle_path /ws/* {
+        reverse_proxy backend:8000
+    }
+
+    # Next.js frontend
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    log {
+        output file /data/caddy/access.log
+    }
+}

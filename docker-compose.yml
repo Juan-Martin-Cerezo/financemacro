@@ -1,10 +1,16 @@
 version: "3.9"
 
+networks:
+  finnet:
+    driver: bridge
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     env_file: .env
+    networks:
+      - finnet
     ports:
       - "5432:5432"
     volumes:
@@ -21,6 +27,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
+    networks:
+      - finnet
     ports:
       - "8000:8000"
     depends_on:
@@ -36,6 +44,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
+    networks:
+      - finnet
     ports:
       - "3000:3000"
     depends_on:
@@ -45,7 +55,26 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_WS_URL=ws://backend:8000/api/v1/market/ws
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    networks:
+      - finnet
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

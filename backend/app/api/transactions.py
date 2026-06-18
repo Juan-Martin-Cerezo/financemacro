@@ -7,13 +7,36 @@ from sqlalchemy.orm import selectinload
 
 from app.core.auth import verify_jwt
 from app.core.database import get_db
-from app.models.models import Transaction
+from app.models.models import Envelope, Transaction
 from app.schemas.transaction import TransactionCreate, TransactionRead
 from app.services.netting_engine import NettingEngine
 from app.services.receipt_parser import ReceiptParser
 from app.services.rule_matcher import RuleMatcher
+from app.services.telegram_notifier import TelegramNotifier
 
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
+
+
+async def _notify_if_deficit(db: AsyncSession, user_id: str) -> None:
+    """Check liquidity deficit and push Telegram alert if needed."""
+    bal_stmt = select(Transaction).where(
+        Transaction.user_id == user_id,
+        Transaction.status != "absorbed",
+    )
+    txs = (await db.execute(bal_stmt)).scalars().all()
+    net_balance = sum(t.amount for t in txs)
+
+    env_stmt = select(Envelope).where(Envelope.user_id == user_id)
+    envs = (await db.execute(env_stmt)).scalars().all()
+    targets_total = sum(abs(e.target_amount or 0) for e in envs)
+
+    if net_balance < targets_total and targets_total > 0:
+        notifier = TelegramNotifier()
+        await notifier.notify_liquidity_deficit(
+            net_balance=float(net_balance),
+            envelope_targets_total=float(targets_total),
+            user_id=user_id,
+        )
 
 
 async def _process_and_persist(
@@ -33,6 +56,9 @@ async def _process_and_persist(
     db.add(tx)
     await db.commit()
     await db.refresh(tx)
+
+    # Fire-and-forget deficit check (non-blocking)
+    await _notify_if_deficit(db, user_id)
 
 
 def _base_stmt(user_id: str):

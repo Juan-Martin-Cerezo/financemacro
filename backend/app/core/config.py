@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     secret_key: str = "changeme_secret_key"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

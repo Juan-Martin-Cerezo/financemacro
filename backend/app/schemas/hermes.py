@@ -8,5 +8,5 @@ class ExecuteActionRequest(BaseModel):
 
 class ExecuteActionResponse(BaseModel):
     action: str
-    status: str  # acknowledged | rejected
+    status: str  # acknowledged | rejected | error
     message: str

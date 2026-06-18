@@ -6,7 +6,7 @@ import EnvelopeGrid from "@/components/EnvelopeGrid";
 import MarketTicker from "@/components/MarketTicker";
 import NewTransactionModal from "@/components/NewTransactionModal";
 import { api, type EnvelopeDTO } from "@/lib/api";
-import { Plus, Wallet, Banknote } from "lucide-react";
+import { Plus, Wallet, Banknote, AlertTriangle } from "lucide-react";
 
 export default function Dashboard() {
   const [showNewTx, setShowNewTx] = useState(false);
@@ -29,8 +29,28 @@ export default function Dashboard() {
   const allocatedTotal = envelopes.reduce((s, e) => s + parseFloat(e.current_balance), 0);
   const unallocated = netBalance !== null ? netBalance - allocatedTotal : null;
 
+  const targetTotal = envelopes.reduce(
+    (s, e) => s + (e.target_amount ? parseFloat(e.target_amount) : 0),
+    0,
+  );
+  const deficit = netBalance !== null && targetTotal > 0 && netBalance < targetTotal;
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
+      {/* Liquidity Watchdog banner */}
+      {deficit && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-800 bg-red-900/40 px-5 py-4">
+          <AlertTriangle size={22} className="shrink-0 text-red-400" />
+          <div>
+            <p className="text-sm font-semibold text-red-200">Liquidity Deficit</p>
+            <p className="text-xs text-red-300/80">
+              Net balance (${netBalance!.toFixed(2)}) is below total envelope targets (${targetTotal.toFixed(2)}).
+              Envelope commitments exceed available funds by ${(targetTotal - netBalance!).toFixed(2)}.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -46,13 +66,21 @@ export default function Dashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <Wallet size={16} className="text-indigo-400" /> Net Balance
           </div>
           <p className="mt-1 text-xl font-bold tabular-nums text-slate-100">
             {netBalance !== null ? `$${netBalance.toFixed(2)}` : "—"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <Wallet size={16} className="text-amber-400" /> Target Total
+          </div>
+          <p className="mt-1 text-xl font-bold tabular-nums text-slate-100">
+            ${targetTotal.toFixed(2)}
           </p>
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">

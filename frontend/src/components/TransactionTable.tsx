@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type TransactionDTO } from "@/lib/api";
-import { ArrowDownCircle, ArrowUpCircle, Loader2 } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function CategoryBadge({ cat }: { cat: TransactionDTO["category"] }) {
   if (!cat) return null;
@@ -28,8 +29,26 @@ export default function TransactionTable({ month, year }: { month?: number; year
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="animate-spin text-indigo-400" size={28} />
+      <div className="rounded-xl border border-slate-700 bg-slate-900">
+        <div className="border-b border-slate-700 px-5 py-3">
+          <h2 className="text-lg font-semibold text-slate-100">Transactions</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-700 text-xs uppercase text-slate-400">
+              <tr>
+                <th className="px-5 py-3 font-medium">Date</th>
+                <th className="px-5 py-3 font-medium">Description</th>
+                <th className="px-5 py-3 font-medium">Category</th>
+                <th className="px-5 py-3 font-medium text-right">Amount</th>
+                <th className="px-5 py-3 font-medium text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton.Row key={i} />)}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }

@@ -67,7 +67,7 @@ export default function CashFlowChart({ transactions }: Props) {
           <Tooltip
             contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: 8, fontSize: 12 }}
             labelStyle={{ color: "#e2e8f0" }}
-            formatter={(value: number) => [`$${value.toFixed(2)}`]}
+            formatter={(value: unknown) => [`$${Number(value).toFixed(2)}`]}
           />
           <Legend
             wrapperStyle={{ fontSize: 11, color: "#94a3b8" }}

@@ -2,6 +2,7 @@
 
 import { useMarketSocket, type MarketTick } from "@/hooks/useMarketSocket";
 import { TrendingUp, TrendingDown, Wifi, WifiOff } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function TickerRow({ tick }: { tick: MarketTick }) {
   const isUp = tick.change >= 0;
@@ -41,11 +42,7 @@ export default function MarketTicker() {
         )}
       </div>
       <div className="space-y-2">
-        {!values.length && (
-          <p className="py-4 text-center text-sm text-slate-500">
-            {connected ? "Waiting for ticks..." : "Connecting..."}
-          </p>
-        )}
+        {!values.length && Array.from({ length: 3 }).map((_, i) => <Skeleton.TickerRow key={i} />)}
         {values.map((t) => (
           <TickerRow key={t.symbol} tick={t} />
         ))}

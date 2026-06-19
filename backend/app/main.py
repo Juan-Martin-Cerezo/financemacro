@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import accounts, categories, envelopes, hermes, market, rules, transactions
 from app.core.database import async_session_factory, engine, Base
@@ -58,6 +59,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="FinanceMacro API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://financemacro.vercel.app",
+        "https://financemacro-git-*.juan-martin-cerezos-projects.vercel.app",
+        "https://financemacro-*.juan-martin-cerezos-projects.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(accounts.router)
 app.include_router(categories.router)

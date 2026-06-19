@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import TransactionTable from "@/components/TransactionTable";
 import EnvelopeGrid from "@/components/EnvelopeGrid";
 import MarketTicker from "@/components/MarketTicker";
@@ -24,8 +24,12 @@ export default function Dashboard() {
   const [month, setMonth] = useState<number>(currentMonth);
   const [year, setYear] = useState<number>(currentYear);
   const [txs, setTxs] = useState<TransactionDTO[]>([]);
+  const [wakingUp, setWakingUp] = useState(false);
+  const loadStartedAt = useRef(0);
 
   const loadData = useCallback(async () => {
+    loadStartedAt.current = Date.now();
+    setWakingUp(false);
     try {
       const [bal, envs, txList] = await Promise.all([
         api.transactions.netBalance(),
@@ -40,6 +44,15 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Warm-up: show helper if API takes >3s
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const elapsed = Date.now() - loadStartedAt.current;
+      if (elapsed >= 3000 && netBalance === null) setWakingUp(true);
+    }, 3000);
+    return () => clearTimeout(id);
+  }, [netBalance]);
+
   const allocatedTotal = envelopes.reduce((s, e) => s + parseFloat(e.current_balance), 0);
   const unallocated = netBalance !== null ? netBalance - allocatedTotal : null;
 
@@ -53,6 +66,16 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
+      {/* Warm-up banner */}
+      {wakingUp && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-800 bg-amber-900/30 px-5 py-3">
+          <div className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+          <p className="text-sm text-amber-200/80">
+            Backend is waking up from sleep mode...
+          </p>
+        </div>
+      )}
+
       {/* Liquidity Watchdog banner */}
       {deficit && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-800 bg-red-900/40 px-5 py-4">

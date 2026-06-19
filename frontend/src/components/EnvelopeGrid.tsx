@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type EnvelopeDTO } from "@/lib/api";
-import { Loader2, PiggyBank, Wallet, Plus } from "lucide-react";
+import { PiggyBank, Wallet, Plus } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 import AllocateModal from "./AllocateModal";
 
 function EnvelopeCard({
@@ -66,8 +67,14 @@ export default function EnvelopeGrid() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="animate-spin text-indigo-400" size={28} />
+      <div className="rounded-xl border border-slate-700 bg-slate-900 p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Wallet size={20} className="text-indigo-400" />
+          <h2 className="text-lg font-semibold text-slate-100">Envelopes</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton.Card key={i} />)}
+        </div>
       </div>
     );
   }
